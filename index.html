@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knapsack Lab: 0/1 Knapsack, four ways</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="topbar">
+  <strong class="logo">Knapsack Lab</strong>
+  <a href="#landing">The problem</a>
+  <a href="#solver">Solve it</a>
+</nav>
+
+<!-- ============ LANDING: explain the problem first ============ -->
+<section id="landing" class="hero">
+  <h1>The 0/1 Knapsack Problem</h1>
+  <p class="lead">You are packing a bag that can carry a limited weight. Every item has a weight and a value.
+    Each item is <strong>all or nothing</strong>: you take it once, or you leave it. Which items give the most total value without breaking the bag?</p>
+
+  <div class="two-col">
+    <div class="card">
+      <h3>A tiny example</h3>
+      <p class="note">Bag capacity = 7</p>
+      <div class="chips">
+        <span class="chip"><i style="background:hsl(20 55% 40%)"></i>Item 1 &middot; w1 &middot; v1</span>
+        <span class="chip"><i style="background:hsl(77 55% 40%)"></i>Item 2 &middot; w3 &middot; v4</span>
+        <span class="chip"><i style="background:hsl(134 55% 40%)"></i>Item 3 &middot; w4 &middot; v5</span>
+        <span class="chip"><i style="background:hsl(191 55% 40%)"></i>Item 4 &middot; w5 &middot; v7</span>
+      </div>
+      <p>The shiny Item 4 alone gives 7. Item 4 + Item 1 gives 8. But <strong>Items 2 + 3</strong> weigh exactly 3 + 4 = 7 and give <strong>9</strong>.
+        The best choice is not obvious, and grabbing the best-looking item first can fail.</p>
+    </div>
+    <div class="card">
+      <h3>Why not just try everything?</h3>
+      <p>With n items there are 2<sup>n</sup> possible bags (each item is in or out).</p>
+      <table class="mini">
+        <tr><th>Items (n)</th><th>Possible bags</th></tr>
+        <tr><td>10</td><td>1,024</td></tr>
+        <tr><td>20</td><td>1,048,576</td></tr>
+        <tr><td>30</td><td>1,073,741,824</td></tr>
+        <tr><td>40</td><td>1,099,511,627,776</td></tr>
+      </table>
+      <p class="note">Brute force explodes. DP avoids it by noticing the same sub-problems repeat.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>The DP idea in one formula</h3>
+    <p>Let <code>f(i, w)</code> = best value using only the first <em>i</em> items with capacity <em>w</em>. For item <em>i</em> with weight <code>wt</code> and value <code>v</code>:</p>
+    <pre class="formula">f(0, w) = 0                                   (no items, no value)
+f(i, w) = f(i-1, w)                           if wt &gt; w   (item cannot fit)
+f(i, w) = max( f(i-1, w),                     skip item i
+               v + f(i-1, w - wt) )           take item i</pre>
+  </div>
+
+  <h2>Four ways to solve it (you can run all of them here)</h2>
+  <div class="methods">
+    <div class="card"><h3>1. Brute force</h3><p>Backtracking recursion: try take / skip for every item.</p>
+      <p class="cx">Time O(2<sup>n</sup>) &middot; Space O(n)</p><button type="button" data-go="brute">Try it</button></div>
+    <div class="card"><h3>2. Memoization</h3><p>Same recursion, but cache each f(i, w) so it is solved only once.</p>
+      <p class="cx">Time O(nW) &middot; Space O(nW)</p><button type="button" data-go="memo">Try it</button></div>
+    <div class="card"><h3>3. Tabulation</h3><p>Bottom-up: fill the whole table row by row, then backtrack to find items.</p>
+      <p class="cx">Time O(nW) &middot; Space O(nW)</p><button type="button" data-go="tab">Try it</button></div>
+    <div class="card"><h3>4. Space-optimized</h3><p>Keep a single row of W+1 values and loop capacity backwards.</p>
+      <p class="cx">Time O(nW) &middot; Space O(W)</p><button type="button" data-go="oned">Try it</button></div>
+  </div>
+
+  <p><button type="button" id="start-btn" class="primary big">Start solving &darr;</button></p>
+</section>
+
+<!-- ============ SOLVER ============ -->
+<main id="solver">
+  <h2 class="section-title">Solve it yourself</h2>
+
+  <section class="panel" id="input-panel">
+    <h2>Step 1. Build your bag</h2>
+    <div class="row">
+      <label>Capacity (W)
+        <input type="number" id="capacity" min="1" max="30" value="7">
+      </label>
+      <label>Preset
+        <select id="preset">
+          <option value="">Choose...</option>
+          <option value="basic">Basic example</option>
+          <option value="greedy">Greedy fails example</option>
+          <option value="memo">Repeated sub-problems (memoization)</option>
+        </select>
+      </label>
+      <button id="random-btn" type="button">Random items</button>
+    </div>
+
+    <table id="items-table">
+      <thead><tr><th>#</th><th>Name</th><th>Weight</th><th>Value</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="row">
+      <button id="add-btn" type="button">Add item</button>
+      <button id="solve-btn" type="button" class="primary">Solve</button>
+    </div>
+    <p id="message" class="message"></p>
+  </section>
+
+  <h2 class="section-title">Step 2. Pick a method</h2>
+  <div class="row tabs-row">
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab active" data-view="tab">Tabulation</button>
+      <button type="button" class="tab" data-view="brute">Brute force</button>
+      <button type="button" class="tab" data-view="memo">Memoization</button>
+      <button type="button" class="tab" data-view="oned">Space-optimized</button>
+      <button type="button" class="tab" data-view="race">Race</button>
+    </div>
+    <label class="speed">Animation speed
+      <input type="range" id="speed" min="1" max="10" value="5">
+    </label>
+  </div>
+
+  <p id="views-hint" class="note">Press Solve above to run every method on your items.</p>
+
+  <div id="views" hidden>
+
+    <!-- Tabulation -->
+    <div class="view" id="view-tab">
+      <section class="panel" id="table-panel" hidden>
+        <h2>Tabulation: fill the DP table</h2>
+        <p class="note">Cell dp[i][w] = best value using the first i items with capacity w.
+          <span class="key key-current">current cell</span>
+          <span class="key key-reads">cells it reads from</span>
+          <span class="key key-answer">final answer</span></p>
+        <div class="row controls">
+          <button id="reset-btn" type="button">Reset</button>
+          <button id="prev-btn" type="button">Step back</button>
+          <button id="play-btn" type="button" class="primary">Play</button>
+          <button id="pause-btn" type="button">Pause</button>
+          <button id="next-btn" type="button">Step forward</button>
+          <button id="end-btn" type="button">Skip to end</button>
+          <span id="step-count" class="note"></span>
+        </div>
+        <p id="explain" class="explain" aria-live="polite"></p>
+        <div class="table-wrap"><table id="dp-table"></table></div>
+      </section>
+
+      <section class="panel" id="back-panel" hidden>
+        <h2>Backtracking: which items were chosen?</h2>
+        <p class="note">Start at the answer cell and move up. If dp[i][w] differs from the cell directly above it, item i was taken.
+          <span class="key key-path">path</span> <span class="key key-current">current cell</span> <span class="key key-reads">cell compared</span></p>
+        <div class="row controls">
+          <button id="breset-btn" type="button">Reset</button>
+          <button id="bstep-btn" type="button">Step</button>
+          <button id="bauto-btn" type="button" class="primary">Auto</button>
+          <button id="bpause-btn" type="button">Pause</button>
+        </div>
+        <p id="back-explain" class="explain" aria-live="polite"></p>
+        <p id="back-taken"></p>
+      </section>
+
+      <section class="panel" id="result-panel" hidden>
+        <h2>Result</h2>
+        <ul id="summary"></ul>
+        <div id="bag"></div>
+        <p id="complexity"></p>
+      </section>
+
+      <section class="panel" id="greedy-panel" hidden>
+        <h2>Why not greedy?</h2>
+        <p class="note">Greedy sorts items by value/weight and takes each one that still fits. It is fast, but not always optimal for 0/1 knapsack.</p>
+        <div class="table-wrap"><table id="greedy-table"></table></div>
+        <p id="greedy-verdict"></p>
+      </section>
+    </div>
+
+    <!-- Brute force -->
+    <div class="view" id="view-brute" hidden>
+      <section class="panel">
+        <h2>Brute force: try every combination</h2>
+        <p class="note">For each item the tree branches: <strong>skip</strong> it (dashed grey) or <strong>take</strong> it (solid teal). A branch that would overload the bag is cut off (red &#10007;): that is what "backtracking" means. Every path from top to bottom is one possible bag, and the number in each circle is the bag's value so far.</p>
+        <div class="row controls" id="brute-controls"></div>
+        <p id="brute-explain" class="explain" aria-live="polite"></p>
+        <div id="brute-chips" class="chips"></div>
+        <div id="brute-bag"></div>
+        <p id="brute-stats"></p>
+        <div id="brute-tree" class="tree-wrap"></div>
+      </section>
+    </div>
+
+    <!-- Memoization -->
+    <div class="view" id="view-memo" hidden>
+      <section class="panel">
+        <h2>Memoization: recursion with a cache</h2>
+        <p class="note">To answer a big question the algorithm first asks smaller ones. Each answer is saved the first time, so asking again is free.
+          <span class="key key-current">solving now</span> <span class="key key-stack">waiting for a smaller answer</span> <span class="key key-hit">reused from cache</span> <span class="key key-untouched">never needed</span></p>
+        <div class="row controls" id="memo-controls"></div>
+        <p id="memo-explain" class="explain" aria-live="polite"></p>
+        <div id="memo-crumbs" class="crumbs"></div>
+        <p id="memo-stats"></p>
+        <div class="table-wrap"><table id="memo-table" class="grid"></table></div>
+      </section>
+    </div>
+
+    <!-- Space-optimized -->
+    <div class="view" id="view-oned" hidden>
+      <section class="panel">
+        <h2>Space-optimized: one array of W+1 values</h2>
+        <p class="note">For each item, update dp[w] = max(dp[w], dp[w - wt] + v). Looping capacity <strong>backwards</strong> makes sure dp[w - wt] still belongs to the previous item, so each item is used at most once.</p>
+        <div class="row">
+          <label>Loop direction
+            <select id="oned-dir">
+              <option value="back">Backward (correct)</option>
+              <option value="fwd">Forward (wrong, for demo)</option>
+            </select>
+          </label>
+        </div>
+        <div class="row controls" id="oned-controls"></div>
+        <div id="oned-items" class="chips"></div>
+        <p id="oned-explain" class="explain" aria-live="polite"></p>
+        <div class="table-wrap"><table id="oned-array" class="grid"></table></div>
+        <p id="oned-verdict"></p>
+        <p class="note">Trade-off: with only one row you can read the best value, but you can no longer backtrack to list the chosen items without extra bookkeeping.</p>
+      </section>
+    </div>
+
+    <!-- Race -->
+    <div class="view" id="view-race" hidden>
+      <section class="panel">
+        <h2>The race: same input, four algorithms</h2>
+        <p class="note">Each method really runs on your items right now. Bars show the number of operations on a log scale (brute force would flatten the others on a normal scale).</p>
+        <div class="table-wrap"><table id="race-table" class="grid race"></table></div>
+        <p id="race-note"></p>
+      </section>
+      <section class="panel">
+        <h2>What happens as the number of items grows?</h2>
+        <p class="note" id="chart-note"></p>
+        <div id="race-chart" class="chart-wrap"></div>
+      </section>
+    </div>
+
+  </div>
+</main>
+
+<footer class="foot">Knapsack Lab &middot; 0/1 Knapsack with Dynamic Programming</footer>
+
+<script src="app.js"></script>
+<script src="methods.js"></script>
+</body>
+</html>
